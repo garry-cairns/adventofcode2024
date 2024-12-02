@@ -1,0 +1,14 @@
+#+TITLE: Advent of code 2024
+#+AUTHOR: Garry Cairns
+#+EMAIL: garryjcairns@gmail.com
+#+STARTUP: hideall
+#+LANGUAGE: en
+#+OPTIONS: ':t
+
+* Intent
+
+I'm using [[https://adventofcode.com/][advent of code]] as an opportunity to learn Rust. I have never written Rust in anger, so please don't take these answers as indicative of how one should.
+
+* Learning goals
+
+I'm going to try to add a new technique each day; so using Rust at all on day one, reading inputs from a file on day two, using Structs on day three, and so on.
