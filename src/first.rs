@@ -1,3 +1,5 @@
+#[path = "utils.rs"]
+mod utils;
 use std::collections::HashMap;
 
 pub fn check_distance(input: &str) -> u32 {

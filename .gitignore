@@ -2,3 +2,4 @@
 /.direnv/
 /.envrc
 *~
+/src/input.txt
