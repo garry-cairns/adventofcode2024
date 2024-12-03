@@ -7,7 +7,6 @@ use regex::Regex;
 pub fn uncorrupt(input: &str) -> i32 {
     let rx = Regex::new(r"mul\((\d{1,3}),(\d{1,3})\)").unwrap();
     let captures: Vec<Captures> = rx.captures_iter(input).collect();
-    println!("Captures: {:?}", captures);
     captures.iter().fold(0, |acc, x| acc + do_mult(x))
 }
 
@@ -39,11 +38,6 @@ fn construct_ranges(donts: Vec<usize>, dos: Vec<usize>, max: usize) -> Vec<Range
     } else {
         *final_dont
     };
-    println!(
-        "Last do: {:?}, Last don't: {:?}, Max: {:?}",
-        final_do, final_dont, max,
-    );
-    // Push the easiest range, from the start to the first switchoff
     if !donts.is_empty() {
         ranges.push(0..donts[0]);
     }
@@ -59,7 +53,6 @@ fn construct_ranges(donts: Vec<usize>, dos: Vec<usize>, max: usize) -> Vec<Range
             }
         }
     }
-    println!("Ranges: {:?}", ranges);
     ranges
 }
 
