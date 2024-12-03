@@ -1,10 +1,9 @@
-mod first;
-mod second;
+mod third;
 mod utils;
 
 fn main() {
     env_logger::init();
     let input = utils::file_input("./src/input.txt").unwrap();
-    let result = second::check_safety_dampened(&input);
+    let result = third::dodont(&input);
     println!("{result:?}");
 }
