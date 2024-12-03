@@ -32,15 +32,34 @@ pub fn dodont(input: &str) -> i32 {
 
 fn construct_ranges(donts: Vec<usize>, dos: Vec<usize>, max: usize) -> Vec<Range<usize>> {
     let mut ranges = Vec::new();
+    let final_do = dos.last().unwrap();
+    let final_dont = donts.last().unwrap();
+    let stopping_point = if final_dont < final_do {
+        max
+    } else {
+        *final_dont
+    };
+    println!(
+        "Last do: {:?}, Last don't: {:?}, Max: {:?}",
+        final_do, final_dont, max,
+    );
+    // Push the easiest range, from the start to the first switchoff
     if !donts.is_empty() {
         ranges.push(0..donts[0]);
     }
+    let mut last_pushed_dont = donts[0];
     if !dos.is_empty() {
         for do_index in dos {
-            let dont = donts.iter().find(|&x| x > &do_index).unwrap_or(&max);
-            ranges.push(do_index..*dont);
+            if do_index >= stopping_point {
+            } else if do_index < last_pushed_dont {
+            } else {
+                let dont = donts.iter().find(|&x| x > &do_index).unwrap_or(&max);
+                ranges.push(do_index..*dont);
+                last_pushed_dont = *dont;
+            }
         }
     }
+    println!("Ranges: {:?}", ranges);
     ranges
 }
 
