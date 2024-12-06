@@ -28,11 +28,15 @@ pub fn file_input(file_path: &str) -> io::Result<String> {
     Ok(contents)
 }
 
-pub fn string_to_2d_array<F>(input: &str, manipulation: F) -> Vec<Vec<i32>>
+pub fn string_to_2d_array<F, T>(input: &str, manipulation: F) -> Vec<Vec<T>>
 where
-    F: Fn(&str) -> Vec<i32>,
+    F: Fn(&str) -> Vec<T>,
 {
     input.lines().map(|line| manipulation(line)).collect()
+}
+
+pub fn just_chars(string: &str) -> Vec<char> {
+    string.chars().collect()
 }
 
 fn digits(original: &str) -> Vec<i32> {
