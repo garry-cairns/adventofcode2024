@@ -35,6 +35,27 @@ where
     input.lines().map(|line| manipulation(line)).collect()
 }
 
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+pub struct CoOrd {
+    pub i: usize,
+    pub j: usize,
+}
+
+// Assumes you're looking for exactly one `target`
+pub fn locate_in_grid<T>(grid: &Vec<Vec<T>>, target: &T) -> Option<CoOrd>
+where
+    T: Eq,
+{
+    for i in 0..grid.len() {
+        for j in 0..grid[0].len() {
+            if grid[i][j] == *target {
+                return Some(CoOrd { i: i, j: j });
+            }
+        }
+    }
+    None
+}
+
 pub fn just_chars(string: &str) -> Vec<char> {
     string.chars().collect()
 }
@@ -91,5 +112,17 @@ treb7uchet"#;
         let result = file_input(temp_path).unwrap();
 
         assert_eq!(result.trim(), content);
+    }
+
+    #[test]
+    fn test_find_in_grid() {
+        let input = r#".....
+.....
+...g.
+....."#;
+        let grid = string_to_2d_array(input, just_chars);
+        let result = locate_in_grid(&grid, &'g');
+
+        assert_eq!(result.unwrap(), CoOrd { i: 2, j: 3 });
     }
 }
