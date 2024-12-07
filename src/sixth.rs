@@ -1,78 +1,245 @@
 #[path = "utils.rs"]
 mod utils;
 use ndarray::Array2;
-use std::collections::HashSet;
+use std::cmp::{max, min};
+use std::collections::{HashMap, HashSet};
 
-#[derive(Debug, Default)]
-struct Guard {
-    location: utils::CoOrd,
-    orientation: char,
-}
-
-#[derive(Debug, Default)]
-struct GameState {
-    grid: Vec<Vec<char>>,
-    guard: Guard,
+#[derive(Clone, Debug, PartialEq)]
+enum Direction {
+    Up,    // (-1, 0)
+    Right, // (0, 1)
+    Down,  // (-1, 0)
+    Left,  // (0, -1)
 }
 
 pub fn guard_path(input: &str) -> u32 {
+    let mut grid = utils::vec_to_array2(utils::string_to_2d_array(input, utils::just_chars));
+    let (visited, _) = find_path(&mut grid, None);
+    (visited.len()) as u32
+}
+
+pub fn cycles(input: &str) -> u32 {
+    let mut grid = utils::vec_to_array2(utils::string_to_2d_array(input, utils::just_chars));
+    let (mut visited, _) = find_path(&mut grid, None);
+    visited.remove(&find_guard(&grid));
+    let mut cycle_coords: HashSet<utils::CoOrd> = HashSet::new();
+    for location in visited {
+        let mut new_grid = grid.clone();
+        let (_, c) = find_path(&mut new_grid, Some(location));
+        if c {
+            cycle_coords.insert(location);
+        }
+    }
+    cycle_coords.len() as u32
+}
+
+fn find_path(
+    grid: &mut Array2<char>,
+    new_obstacle: Option<utils::CoOrd>,
+) -> (HashSet<utils::CoOrd>, bool) {
     let mut visited: HashSet<utils::CoOrd> = HashSet::new();
-    let grid = utils::vec_to_array2(utils::string_to_2d_array(input, utils::just_chars));
-    let mut directions = vec![(-1, 0), (0, 1), (-1, 0), (0, -1)].into_iter().cycle();
-    let cursor = find_guard(&grid);
+    let mut directions = vec![
+        Direction::Up,
+        Direction::Right,
+        Direction::Down,
+        Direction::Left,
+    ]
+    .into_iter()
+    .cycle();
+    let mut cursor = find_guard(&grid);
     visited.insert(cursor);
-    let obstacles = utils::locate_all_in_grid(&grid, &'#');
+    match new_obstacle {
+        Some(coord) => grid[[coord.i, coord.j]] = '#',
+        None => {}
+    }
+    let (obstacles_by_row, obstacles_by_column) = utils::locate_all_in_grid(&grid, &'#');
     // The point here is to avoid hitting all the squares
     // We know where the guard is and whether it's travelling up, down, left or right
     // Since we know where the obstables are we can add any squares not already
     // in the visited set between the guard and the next obstacle immediately,
     // and then change direction and repeat.
-    3
+    let mut ended = false;
+    while !ended {
+        let (newly_visited, termination, new_cursor) = walk(
+            grid,
+            &cursor,
+            &directions.next().unwrap(),
+            &obstacles_by_row,
+            &obstacles_by_column,
+        );
+        if termination == '!' {
+            visited.extend(newly_visited);
+            ended = true;
+        } else if termination == 'O' {
+            ended = true;
+            return (visited, true);
+        } else {
+            // cursor is now the last co-ord visited in the last run
+            // no need to update direction as our cycle will do that
+            cursor = new_cursor;
+            // update our visited set
+            visited.extend(newly_visited);
+        }
+    }
+    (visited, false)
 }
 
-pub fn cycles(input: &str) -> u32 {
-    3
+fn walk(
+    grid: &mut Array2<char>,
+    cursor: &utils::CoOrd,
+    direction: &Direction,
+    obstacles_by_row: &HashMap<usize, Vec<utils::CoOrd>>,
+    obstacles_by_column: &HashMap<usize, Vec<utils::CoOrd>>,
+) -> (Vec<utils::CoOrd>, char, utils::CoOrd) {
+    let (height, width) = (grid.shape()[0], grid.shape()[1]);
+    let default_vec: Vec<utils::CoOrd> = Vec::new();
+    if direction == &Direction::Up {
+        let obstacles = obstacles_by_column.get(&cursor.j).unwrap_or(&default_vec);
+        let max_less_than_i = obstacles.iter().filter(|&x| x.i < cursor.i).max();
+
+        match max_less_than_i {
+            Some(value) => {
+                let new_cursor = utils::CoOrd {
+                    i: value.i + 1,
+                    j: value.j,
+                };
+                if grid[[new_cursor.i, new_cursor.j]] == '⌜' {
+                    println!("{:?}", new_cursor);
+                    println!("{:?}", grid);
+                    return (points_between(cursor, &new_cursor), 'O', new_cursor);
+                } else {
+                    grid[[new_cursor.i, new_cursor.j]] = '⌜';
+                }
+                return (points_between(cursor, &new_cursor), '#', new_cursor);
+            }
+            None => {
+                return (
+                    points_between(cursor, &utils::CoOrd { i: 0, j: cursor.j }),
+                    '!',
+                    *cursor,
+                )
+            }
+        }
+    } else if direction == &Direction::Down {
+        let obstacles = obstacles_by_column.get(&cursor.j).unwrap_or(&default_vec);
+        let min_greater_than_i = obstacles.iter().filter(|&x| x.i > cursor.i).min();
+
+        match min_greater_than_i {
+            Some(value) => {
+                let new_cursor = utils::CoOrd {
+                    i: value.i - 1,
+                    j: value.j,
+                };
+                if grid[[new_cursor.i, new_cursor.j]] == '⌟' {
+                    println!("{:?}", new_cursor);
+                    println!("{:?}", grid);
+                    return (points_between(cursor, &new_cursor), 'O', new_cursor);
+                } else {
+                    grid[[new_cursor.i, new_cursor.j]] = '⌟';
+                }
+                return (points_between(cursor, &new_cursor), '#', new_cursor);
+            }
+            None => {
+                return (
+                    points_between(
+                        cursor,
+                        &utils::CoOrd {
+                            i: height - 1,
+                            j: cursor.j,
+                        },
+                    ),
+                    '!',
+                    *cursor,
+                )
+            }
+        }
+    } else if direction == &Direction::Left {
+        let obstacles = obstacles_by_row.get(&cursor.i).unwrap_or(&default_vec);
+        let max_less_than_j = obstacles.iter().filter(|&x| x.j < cursor.j).max();
+
+        match max_less_than_j {
+            Some(value) => {
+                let new_cursor = utils::CoOrd {
+                    i: value.i,
+                    j: value.j + 1,
+                };
+                if grid[[new_cursor.i, new_cursor.j]] == '⌞' {
+                    println!("{:?}", new_cursor);
+                    println!("{:?}", grid);
+                    return (points_between(cursor, &new_cursor), 'O', new_cursor);
+                } else {
+                    grid[[new_cursor.i, new_cursor.j]] = '⌞';
+                }
+                return (points_between(cursor, &new_cursor), '#', new_cursor);
+            }
+            None => {
+                return (
+                    points_between(cursor, &utils::CoOrd { i: cursor.i, j: 0 }),
+                    '!',
+                    *cursor,
+                )
+            }
+        }
+    } else if direction == &Direction::Right {
+        let obstacles = obstacles_by_row.get(&cursor.i).unwrap_or(&default_vec);
+        let min_greater_than_j = obstacles.iter().filter(|&x| x.j > cursor.j).min();
+
+        match min_greater_than_j {
+            Some(value) => {
+                let new_cursor = utils::CoOrd {
+                    i: value.i,
+                    j: value.j - 1,
+                };
+                if grid[[new_cursor.i, new_cursor.j]] == '⌝' {
+                    println!("{:?}", new_cursor);
+                    println!("{:?}", grid);
+                    return (points_between(cursor, &new_cursor), 'O', new_cursor);
+                } else {
+                    grid[[new_cursor.i, new_cursor.j]] = '⌝';
+                }
+                return (points_between(cursor, &new_cursor), '#', new_cursor);
+            }
+            None => {
+                return (
+                    points_between(
+                        cursor,
+                        &utils::CoOrd {
+                            i: cursor.i,
+                            j: width - 1,
+                        },
+                    ),
+                    '!',
+                    *cursor,
+                )
+            }
+        }
+    } else {
+        (vec![], '!', *cursor)
+    }
 }
 
-//fn walk(
-//    grid: &Vec<Vec<char>>,
-//    cursor: &utils::CoOrd,
-//    path: &Vec<utils::CoOrd>,
-//) -> HashMap<utils::CoOrd> {
-//    let mut new_path: Vec<utils::CoOrd> = path.iter().copied().collect();
-//    new_path.push(cursor.clone());
-//    let proposed_move = next(grid, cursor);
-//    match proposed_move {
-//        Some(coord) => {
-//            let updated = update_grid(grid, &coord);
-//            new_path.extend(walk(&updated.grid, &updated.guard.location, &new_path));
-//        }
-//        None => println!("Stopped"),
-//    }
-//    new_path
-//}
-//
-//fn update_grid(grid: &Vec<Vec<char>>, proposed: &utils::CoOrd) -> GameState {
-//    let mut new_grid = grid.clone();
-//    let guard_at_start = find_guard(&new_grid);
-//    let mut guard_at_end: Guard = Guard::default();
-//
-//    if grid[proposed.i][proposed.j] == '#' {
-//        guard_at_end.location = guard_at_start;
-//        guard_at_end.orientation = turn(&new_grid[guard_at_start.i][guard_at_start.j]);
-//        new_grid[guard_at_start.i][guard_at_start.j] = guard_at_end.orientation;
-//    } else {
-//        new_grid[proposed.i][proposed.j] = new_grid[guard_at_start.i][guard_at_start.j];
-//        guard_at_end.location = proposed.clone();
-//        new_grid[guard_at_start.i][guard_at_start.j] = 'X';
-//    }
-//
-//    GameState {
-//        grid: new_grid,
-//        guard: guard_at_end,
-//    }
-//}
-//
+// Returns a vector of struct CoOrd { i: usize, j: usize } going in a straight line
+// from start to end, in the order you'd expect from those two values
+// Only works in straight lines.
+fn points_between(start: &utils::CoOrd, end: &utils::CoOrd) -> Vec<utils::CoOrd> {
+    let mut result = Vec::new();
+    let static_i = start.i == end.i;
+    let static_j = start.j == end.j;
+
+    if static_i {
+        let (min_j, max_j) = (min(start.j, end.j), max(start.j, end.j));
+        for j in min_j..=max_j {
+            result.push(utils::CoOrd { i: start.i, j });
+        }
+    } else if static_j {
+        let (min_i, max_i) = (min(start.i, end.i), max(start.i, end.i));
+        for i in min_i..=max_i {
+            result.push(utils::CoOrd { i, j: start.j });
+        }
+    }
+    result
+}
+
 fn find_guard(grid: &Array2<char>) -> utils::CoOrd {
     let chars: Vec<char> = vec!['^', '>', '∨', '<'];
     for guard in chars {
@@ -83,53 +250,6 @@ fn find_guard(grid: &Array2<char>) -> utils::CoOrd {
     }
     return utils::CoOrd { i: 0, j: 0 };
 }
-//
-//fn next(grid: &Vec<Vec<char>>, cursor: &utils::CoOrd) -> Option<utils::CoOrd> {
-//    let i_max = grid.len();
-//    let j_max = grid[0].len();
-//    if grid[cursor.i][cursor.j] == '^' {
-//        if cursor.i >= 1 {
-//            return Some(utils::CoOrd {
-//                i: cursor.i - 1,
-//                j: cursor.j,
-//            });
-//        }
-//    } else if grid[cursor.i][cursor.j] == '>' {
-//        if cursor.j + 1 < j_max {
-//            return Some(utils::CoOrd {
-//                i: cursor.i,
-//                j: cursor.j + 1,
-//            });
-//        }
-//    } else if grid[cursor.i][cursor.j] == '∨' {
-//        if cursor.i + 1 < i_max {
-//            return Some(utils::CoOrd {
-//                i: cursor.i + 1,
-//                j: cursor.j,
-//            });
-//        }
-//    } else {
-//        if cursor.j >= 1 {
-//            return Some(utils::CoOrd {
-//                i: cursor.i,
-//                j: cursor.j - 1,
-//            });
-//        }
-//    }
-//    return None;
-//}
-//
-//fn turn(guard: &char) -> char {
-//    if guard == &'^' {
-//        '>'
-//    } else if guard == &'>' {
-//        '∨'
-//    } else if guard == &'∨' {
-//        '<'
-//    } else {
-//        '^'
-//    }
-//}
 
 #[cfg(test)]
 mod tests {
@@ -166,6 +286,6 @@ mod tests {
 ......#..."#;
 
         let result = cycles(input);
-        assert_eq!(result, 6);
+        assert_eq!(result, 7);
     }
 }

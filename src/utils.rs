@@ -2,6 +2,7 @@ use log::debug;
 use ndarray::Array2;
 use reqwest::blocking::get;
 use reqwest::Error;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, Read};
 
@@ -45,21 +46,32 @@ where
     input.lines().map(|line| manipulation(line)).collect()
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct CoOrd {
     pub i: usize,
     pub j: usize,
 }
 
 // Assumes you're looking for all matches of `target`
-pub fn locate_all_in_grid<T>(grid: &Array2<T>, target: &T) -> Vec<CoOrd>
+pub fn locate_all_in_grid<T>(
+    grid: &Array2<T>,
+    target: &T,
+) -> (HashMap<usize, Vec<CoOrd>>, HashMap<usize, Vec<CoOrd>>)
 where
     T: PartialEq,
 {
+    let mut row_matches = HashMap::new();
+    let mut col_matches = HashMap::new();
+
     grid.indexed_iter()
         .filter(|(_, value)| *value == target)
-        .map(|((i, j), _)| CoOrd { i, j })
-        .collect()
+        .for_each(|((i, j), _)| {
+            let coord = CoOrd { i, j };
+            row_matches.entry(i).or_insert_with(Vec::new).push(coord);
+            col_matches.entry(j).or_insert_with(Vec::new).push(coord);
+        });
+
+    (row_matches, col_matches)
 }
 
 // Assumes you're looking for exactly one `target`
@@ -138,8 +150,13 @@ treb7uchet"#;
 ....."#;
         let grid = vec_to_array2(string_to_2d_array(input, just_chars));
         let result = locate_all_in_grid(&grid, &'g');
-
-        assert_eq!(result, vec![CoOrd { i: 1, j: 1 }, CoOrd { i: 2, j: 3 }]);
+        let mut expected_row = HashMap::new();
+        expected_row.insert(1, vec![CoOrd { i: 1, j: 1 }]);
+        expected_row.insert(2, vec![CoOrd { i: 2, j: 3 }]);
+        let mut expected_column = HashMap::new();
+        expected_column.insert(1, vec![CoOrd { i: 1, j: 1 }]);
+        expected_column.insert(3, vec![CoOrd { i: 2, j: 3 }]);
+        assert_eq!(result, (expected_row, expected_column));
     }
 
     #[test]
