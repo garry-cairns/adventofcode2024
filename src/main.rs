@@ -1,9 +1,9 @@
-mod seventh;
+mod eighth;
 mod utils;
 
 fn main() {
     env_logger::init();
     let input = utils::file_input("./src/input.txt").unwrap();
-    let result = seventh::concat_add_mult(&input);
+    let result = eighth::detect_antinodes(&input);
     println!("{result:?}");
 }

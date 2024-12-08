@@ -52,6 +52,112 @@ pub struct CoOrd {
     pub j: usize,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Line {
+    pub p1: CoOrd,
+    pub p2: CoOrd,
+}
+
+impl Line {
+    pub fn new(p1: CoOrd, p2: CoOrd) -> Self {
+        Line { p1, p2 }
+    }
+
+    pub fn extend_back(&self, grid_size: (usize, usize)) -> Option<CoOrd> {
+        let (d_i, d_j) = distance_between(self.p1, self.p2);
+        let mut before_i = 0;
+        if self.p1.i < self.p2.i {
+            // Will put us over `max` if we're out of bounds
+            before_i = self.p1.i.wrapping_sub(d_i);
+        } else {
+            before_i = self.p1.i + d_i;
+        }
+        let mut before_j = 0;
+        if self.p1.j < self.p2.j {
+            before_j = self.p1.j.wrapping_sub(d_j);
+        } else {
+            before_j = self.p1.j + d_j;
+        }
+
+        let before = if (before_i) >= 0
+            && (before_j) >= 0
+            && (before_i as usize) < grid_size.0
+            && (before_j as usize) < grid_size.1
+        {
+            Some(CoOrd {
+                i: before_i as usize,
+                j: before_j as usize,
+            })
+        } else {
+            None
+        };
+        before
+    }
+
+    pub fn extend_forward(&self, grid_size: (usize, usize)) -> Option<CoOrd> {
+        let (d_i, d_j) = distance_between(self.p1, self.p2);
+        let mut after_i = 0;
+        if self.p1.i < self.p2.i {
+            // Will put us over `max` if we're out of bounds
+            after_i = self.p2.i + d_i;
+        } else {
+            after_i = self.p2.i.wrapping_sub(d_i);
+        }
+        let mut after_j = 0;
+        if self.p1.j < self.p2.j {
+            after_j = self.p2.j + d_j;
+        } else {
+            after_j = self.p2.j.wrapping_sub(d_j);
+        }
+
+        let after = if (after_i) >= 0
+            && (after_j) >= 0
+            && (after_i as usize) < grid_size.0
+            && (after_j as usize) < grid_size.1
+        {
+            Some(CoOrd {
+                i: after_i as usize,
+                j: after_j as usize,
+            })
+        } else {
+            None
+        };
+        after
+    }
+
+    pub fn extend(&self, grid_size: (usize, usize)) -> (Option<CoOrd>, Option<CoOrd>) {
+        let before = self.extend_back(grid_size);
+        let after = self.extend_forward(grid_size);
+
+        (before, after)
+    }
+}
+
+//pub fn extend_until(line: &Line, grid_size: (usize, usize)) -> (Option<CoOrd>, Option<CoOrd>) {
+//    let mut back: Vec<CoOrd> = Vec::new();
+//    let mut front: Vec<CoOrd> = Vec::new();
+//    let mut in_bounds = true;
+//    while in_bounds {
+//        let (back, front) = self.extend((max, max));
+//        if back.is_some() {
+//            back.push(back.unwrap());
+//        }
+//        if front.is_some() {
+//            front.push(front.unwrap());
+//        }
+//        if back.is_none() && front.is_none {
+//            in_bounds = true;
+//        }
+//    }
+//}
+
+pub fn distance_between(a: CoOrd, b: CoOrd) -> (usize, usize) {
+    (
+        (b.i as i32 - a.i as i32).abs() as usize,
+        (b.j as i32 - a.j as i32).abs() as usize,
+    )
+}
+
 // Assumes you're looking for all matches of `target`
 pub fn locate_all_in_grid<T>(
     grid: &Array2<T>,
@@ -140,6 +246,54 @@ treb7uchet"#;
         let result = file_input(temp_path).unwrap();
 
         assert_eq!(result.trim(), content);
+    }
+
+    #[test]
+    fn test_line() {
+        let first = CoOrd { i: 2, j: 2 };
+        let second = CoOrd { i: 3, j: 4 };
+        let line = Line {
+            p1: first,
+            p2: second,
+        };
+        let (back, front) = line.extend((7, 7));
+        if back.is_some() && front.is_some() {
+            let expected = Line::new(back.unwrap(), front.unwrap());
+            let e1 = CoOrd { i: 1, j: 0 };
+            let e2 = CoOrd { i: 4, j: 6 };
+            assert_eq!(expected.p1, e1);
+            assert_eq!(expected.p2, e2);
+        }
+    }
+
+    #[test]
+    fn test_errant_line() {
+        let first = CoOrd { i: 4, j: 4 };
+        let second = CoOrd { i: 3, j: 7 };
+        let line = Line {
+            p1: first,
+            p2: second,
+        };
+        let (back, front) = line.extend((7, 7));
+        if back.is_some() && front.is_some() {
+            let expected = Line::new(back.unwrap(), front.unwrap());
+            let e1 = CoOrd { i: 2, j: 10 };
+            let e2 = CoOrd { i: 5, j: 1 };
+            assert_eq!(expected.p1, e1);
+            assert_eq!(expected.p2, e2);
+        }
+    }
+
+    #[test]
+    fn test_distance_between() {
+        let first = CoOrd { i: 1, j: 1 };
+        let second = CoOrd { i: 2, j: 3 };
+        let result = distance_between(first, second);
+        assert_eq!(result, (1, 2));
+        let reverse = distance_between(second, first);
+        assert_eq!(reverse, (1, 2));
+        let same = distance_between(first, first);
+        assert_eq!(same, (0, 0));
     }
 
     #[test]
