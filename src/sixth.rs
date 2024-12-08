@@ -20,15 +20,18 @@ pub fn guard_path(input: &str) -> u32 {
 
 pub fn cycles(input: &str) -> u32 {
     let mut grid = utils::vec_to_array2(utils::string_to_2d_array(input, utils::just_chars));
-    let (mut visited, _) = find_path(&mut grid, None);
-    visited.remove(&find_guard(&grid));
+    let clean_grid = utils::vec_to_array2(utils::string_to_2d_array(input, utils::just_chars));
+    let (visited, _) = find_path(&mut grid, None);
     let mut cycle_coords: HashSet<utils::CoOrd> = HashSet::new();
     for location in visited {
-        let mut new_grid = grid.clone();
+        let mut new_grid = clean_grid.clone();
         let (_, c) = find_path(&mut new_grid, Some(location));
         if c {
             cycle_coords.insert(location);
         }
+    }
+    for c in &cycle_coords {
+        println!("{:?}", c);
     }
     cycle_coords.len() as u32
 }
@@ -67,11 +70,11 @@ fn find_path(
             &obstacles_by_row,
             &obstacles_by_column,
         );
+
         if termination == '!' {
             visited.extend(newly_visited);
             ended = true;
         } else if termination == 'O' {
-            ended = true;
             return (visited, true);
         } else {
             // cursor is now the last co-ord visited in the last run
@@ -104,8 +107,6 @@ fn walk(
                     j: value.j,
                 };
                 if grid[[new_cursor.i, new_cursor.j]] == '⌜' {
-                    println!("{:?}", new_cursor);
-                    println!("{:?}", grid);
                     return (points_between(cursor, &new_cursor), 'O', new_cursor);
                 } else {
                     grid[[new_cursor.i, new_cursor.j]] = '⌜';
@@ -131,8 +132,6 @@ fn walk(
                     j: value.j,
                 };
                 if grid[[new_cursor.i, new_cursor.j]] == '⌟' {
-                    println!("{:?}", new_cursor);
-                    println!("{:?}", grid);
                     return (points_between(cursor, &new_cursor), 'O', new_cursor);
                 } else {
                     grid[[new_cursor.i, new_cursor.j]] = '⌟';
@@ -164,8 +163,6 @@ fn walk(
                     j: value.j + 1,
                 };
                 if grid[[new_cursor.i, new_cursor.j]] == '⌞' {
-                    println!("{:?}", new_cursor);
-                    println!("{:?}", grid);
                     return (points_between(cursor, &new_cursor), 'O', new_cursor);
                 } else {
                     grid[[new_cursor.i, new_cursor.j]] = '⌞';
@@ -191,8 +188,6 @@ fn walk(
                     j: value.j - 1,
                 };
                 if grid[[new_cursor.i, new_cursor.j]] == '⌝' {
-                    println!("{:?}", new_cursor);
-                    println!("{:?}", grid);
                     return (points_between(cursor, &new_cursor), 'O', new_cursor);
                 } else {
                     grid[[new_cursor.i, new_cursor.j]] = '⌝';
@@ -286,6 +281,6 @@ mod tests {
 ......#..."#;
 
         let result = cycles(input);
-        assert_eq!(result, 7);
+        assert_eq!(result, 6);
     }
 }
