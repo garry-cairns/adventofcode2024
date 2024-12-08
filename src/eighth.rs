@@ -56,6 +56,7 @@ fn clean(
 ) {
     let grid = utils::vec_to_array2(utils::string_to_2d_array(input, utils::just_chars));
     let mut antennas: HashSet<char> = input.chars().collect();
+    println!("There are {:?}", &antennas.len());
     let mut coords: HashMap<char, Vec<(utils::CoOrd, utils::CoOrd)>> = HashMap::new();
     antennas.remove(&'.');
     antennas.remove(&'\n');
@@ -98,15 +99,11 @@ fn local_antinodes(
             result.push(front.unwrap());
         }
     } else {
-        //let (back, front) = utils::extend_until(line(max, max));
-        //if back.is_some() {
-        //    println!("{:?}", (line, back));
-        //    result.extend(back.unwrap());
-        //}
-        //if front.is_some() {
-        //    println!("{:?}", (line, front));
-        //    result.extend(front.unwrap());
-        //}
+        let (d_i, d_j) = utils::distance_between(pair.0, pair.1);
+        let back = line.extend_back_greedy(d_i, d_j, (max, max));
+        let forward = line.extend_forward_greedy(d_i, d_j, (max, max));
+        result.extend(back);
+        result.extend(forward);
     }
     result
 }
@@ -170,16 +167,16 @@ mod tests {
 */
 
 /*
-##....#....#
-.#.#....0...
-..#.#0....#.
-..##...0....
-....0....#..
-.#...#A....#
-...#..#.....
-#....#.#....
-..#.....A...
-....#....A..
-.#........#.
-...#......##
+vv....v....v
+.v.v....0...
+..v.v0....v.
+..vv...0....
+....0....v..
+.v...vA....v
+...v..v.....
+v....v.v....
+..v.....A...
+....v....A..
+.v........v.
+...v......vv
 */

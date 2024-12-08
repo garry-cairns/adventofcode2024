@@ -63,8 +63,7 @@ impl Line {
         Line { p1, p2 }
     }
 
-    pub fn extend_back(&self, grid_size: (usize, usize)) -> Option<CoOrd> {
-        let (d_i, d_j) = distance_between(self.p1, self.p2);
+    pub fn extend_back(&self, d_i: usize, d_j: usize, grid_size: (usize, usize)) -> Option<CoOrd> {
         let mut before_i = 0;
         if self.p1.i < self.p2.i {
             // Will put us over `max` if we're out of bounds
@@ -94,8 +93,12 @@ impl Line {
         before
     }
 
-    pub fn extend_forward(&self, grid_size: (usize, usize)) -> Option<CoOrd> {
-        let (d_i, d_j) = distance_between(self.p1, self.p2);
+    pub fn extend_forward(
+        &self,
+        d_i: usize,
+        d_j: usize,
+        grid_size: (usize, usize),
+    ) -> Option<CoOrd> {
         let mut after_i = 0;
         if self.p1.i < self.p2.i {
             // Will put us over `max` if we're out of bounds
@@ -125,9 +128,56 @@ impl Line {
         after
     }
 
+    pub fn extend_back_greedy(
+        &self,
+        d_i: usize,
+        d_j: usize,
+        grid_size: (usize, usize),
+    ) -> Vec<CoOrd> {
+        let mut points: Vec<CoOrd> = Vec::new();
+        let mut in_bounds = true;
+        let mut local_d_i = d_i.clone();
+        let mut local_d_j = d_j.clone();
+        while in_bounds {
+            let next_point = self.extend_back(local_d_i, local_d_j, grid_size);
+            match next_point {
+                Some(point) => points.push(point),
+                None => in_bounds = false,
+            }
+            local_d_i += d_i;
+            local_d_j += d_j;
+        }
+        points
+    }
+
+    pub fn extend_forward_greedy(
+        &self,
+        d_i: usize,
+        d_j: usize,
+        grid_size: (usize, usize),
+    ) -> Vec<CoOrd> {
+        let mut points: Vec<CoOrd> = Vec::new();
+        points.push(self.p1);
+        points.push(self.p2);
+        let mut in_bounds = true;
+        let mut local_d_i = d_i.clone();
+        let mut local_d_j = d_j.clone();
+        while in_bounds {
+            let next_point = self.extend_forward(local_d_i, local_d_j, grid_size);
+            match next_point {
+                Some(point) => points.push(point),
+                None => in_bounds = false,
+            }
+            local_d_i += d_i;
+            local_d_j += d_j;
+        }
+        points
+    }
+
     pub fn extend(&self, grid_size: (usize, usize)) -> (Option<CoOrd>, Option<CoOrd>) {
-        let before = self.extend_back(grid_size);
-        let after = self.extend_forward(grid_size);
+        let (d_i, d_j) = distance_between(self.p1, self.p2);
+        let before = self.extend_back(d_i, d_j, grid_size);
+        let after = self.extend_forward(d_i, d_j, grid_size);
 
         (before, after)
     }
